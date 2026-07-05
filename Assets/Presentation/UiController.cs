@@ -34,15 +34,27 @@ public class UIController : MonoBehaviour
     void DrawMap(Cell[,] grid)
     {
         Texture2D tex = new Texture2D(mapWidth, mapHeight);
-        tex.filterMode = FilterMode.Point; // crisp pixels, no blur
+        tex.filterMode = FilterMode.Point;
 
         for (int x = 0; x < mapWidth; x++)
+        {
             for (int y = 0; y < mapHeight; y++)
             {
-                float w = grid[x, y].Weight;
-                tex.SetPixel(x, y, new Color(w, w, w)); // grayscale by weight for now
+                Cell c = grid[x, y];
+                Color col = ElevationToColor(c.Elevation);
+                tex.SetPixel(x, y, col);
             }
+        }
         tex.Apply();
         mapDisplay.texture = tex;
+    }
+
+    Color ElevationToColor(float e)
+    {
+        if (e < 0.35f) return new Color(0.1f, 0.3f, 0.6f);   // water
+        if (e < 0.45f) return new Color(0.8f, 0.75f, 0.5f);  // beach/sand
+        if (e < 0.7f) return new Color(0.2f, 0.6f, 0.2f);    // grass/land
+        if (e < 0.85f) return new Color(0.5f, 0.4f, 0.3f);   // hills
+        return Color.white;                                  // mountains/snow
     }
 }
