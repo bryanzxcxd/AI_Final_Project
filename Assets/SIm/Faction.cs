@@ -12,11 +12,14 @@ public class Faction
     public (int x, int y) Capital;
     public bool IsAlive = true;
 
-    public float Aggression;   // 0-1, personality trait, randomized at spawn
+    public float Aggression;
     public float Wealth;
     public float Stability;
 
     public Dictionary<int, RelationState> Relations = new Dictionary<int, RelationState>();
+    public Dictionary<int, float> Animosity = new Dictionary<int, float>(); // 0-1, builds over time
 
     public float Strength => Territory.Count * (1f + Wealth * 0.1f);
+
+    public float GetAnimosity(int otherId) => Animosity.GetValueOrDefault(otherId, 0f);
 }

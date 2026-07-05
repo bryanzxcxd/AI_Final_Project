@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
 
 public class WorldSim
 {
@@ -31,13 +32,54 @@ public class WorldSim
     public void Tick()
     {
         CurrentTick++;
+
+        UpdateAnimosity();
+
         foreach (var faction in Factions.Where(f => f.IsAlive))
         {
             var (action, target) = FactionBehavior.ChooseAction(faction, Factions, Grid, Width, Height, rng);
+            Debug.Log($"Tick {CurrentTick}: {faction.Name} chose {action}" + (target != null ? $" targeting {target.Name}" : " (no target)"));
             ApplyAction(faction, action, target);
         }
     }
 
+    void UpdateAnimosity()
+    {
+        foreach (var faction in Factions.Where(f => f.IsAlive))
+        {
+            var borderingFactionIds = GetBorderingFactionIds(faction);
+
+            foreach (int otherId in borderingFactionIds)
+            {
+                var rel = faction.Relations.GetValueOrDefault(otherId, RelationState.Neutral);
+                if (rel == RelationState.Alliance || rel == RelationState.DefensivePact) continue;
+                if (rel == RelationState.War) continue; // already at war, animosity no longer needs to build
+
+                float current = faction.GetAnimosity(otherId);
+                float growthRate = 0.01f; // tune this to control how fast tension builds
+                faction.Animosity[otherId] = Mathf.Clamp01(current + growthRate);
+            }
+        }
+    }
+
+    HashSet<int> GetBorderingFactionIds(Faction faction)
+    {
+        var neighborIds = new HashSet<int>();
+        int[] dx = { 1, -1, 0, 0 };
+        int[] dy = { 0, 0, 1, -1 };
+
+        foreach (var (x, y) in faction.Territory)
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                int nx = x + dx[i], ny = y + dy[i];
+                if (nx < 0 || ny < 0 || nx >= Width || ny >= Height) continue;
+                int ownerId = Grid[nx, ny].OwnerFactionId;
+                if (ownerId != -1 && ownerId != faction.Id) neighborIds.Add(ownerId);
+            }
+        }
+        return neighborIds;
+    }
     void ApplyAction(Faction faction, ActionType action, Faction target)
     {
         var evt = new SimEvent { Tick = CurrentTick, Action = action, FactionId = faction.Id, TargetFactionId = target?.Id };
@@ -67,6 +109,8 @@ public class WorldSim
             case ActionType.Alliance:
                 faction.Relations[target.Id] = RelationState.Alliance;
                 target.Relations[faction.Id] = RelationState.Alliance;
+                faction.Animosity[target.Id] = 0f;
+                target.Animosity[faction.Id] = 0f;
                 break;
 
             case ActionType.DefensiveAlliance:
@@ -77,6 +121,8 @@ public class WorldSim
             case ActionType.PeaceTreaty:
                 faction.Relations[target.Id] = RelationState.Peace;
                 target.Relations[faction.Id] = RelationState.Peace;
+                faction.Animosity[target.Id] = 0f;
+                target.Animosity[faction.Id] = 0f;
                 break;
 
             case ActionType.BreakPeace:
@@ -121,7 +167,17 @@ public class WorldSim
         attacker.Territory.Add(cellToTake);
         defender.Territory.Remove(cellToTake);
 
-        if (defender.Territory.Count == 0) defender.IsAlive = false;
+        if (defender.Territory.Count == 0 && defender.IsAlive)
+        {
+            defender.IsAlive = false;
+            History.Add(new SimEvent
+            {
+                Tick = CurrentTick,
+                Action = ActionType.Destroyed,
+                FactionId = defender.Id,
+                TargetFactionId = attacker.Id // who delivered the final blow
+            });
+        }
     }
 
     List<(int x, int y)> GetBorderCells(Faction faction)

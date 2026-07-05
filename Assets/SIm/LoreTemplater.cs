@@ -74,7 +74,14 @@ public static class LoreTemplater
                 return target != null
                     ? $"{actor.Name} broke the peace with {target.Name}, reigniting old hostilities."
                     : null;
-
+            case ActionType.Destroyed:
+                return target != null
+                    ? Pick(new[] {
+            $"The realm of {actor.Name} fell at last, conquered utterly by {target.Name}.",
+            $"{actor.Name} was wiped from the map, its lands absorbed by {target.Name}.",
+            $"After a long struggle, {target.Name} delivered the final blow, and {actor.Name} ceased to exist."
+                    }, evt)
+                    : $"The realm of {actor.Name} collapsed and was erased from history.";
             default:
                 return null;
         }

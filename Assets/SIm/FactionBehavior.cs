@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -12,7 +11,8 @@ public enum ActionType
     Alliance,
     PeaceTreaty,
     BreakPeace,
-    Consolidate
+    Consolidate,
+    Destroyed
 }
 
 public static class FactionBehavior
@@ -24,8 +24,9 @@ public static class FactionBehavior
 
         var scores = new Dictionary<ActionType, float>();
         Faction bestNeighbor = GetStrongestNeighbor(faction, allFactions, grid, width, height);
+        int neutralBorderCount = CountNeutralBorderCells(faction, grid, width, height);
 
-        scores[ActionType.Expand] = ScoreExpand(faction);
+        scores[ActionType.Expand] = ScoreExpand(faction, neutralBorderCount);
         scores[ActionType.Consolidate] = ScoreConsolidate(faction);
 
         if (bestNeighbor != null)
@@ -42,7 +43,11 @@ public static class FactionBehavior
         return (best.Key, bestNeighbor);
     }
 
-    static float ScoreExpand(Faction f) => 0.4f + (1f - f.Aggression) * 0.3f;
+    static float ScoreExpand(Faction f, int neutralBorderCount)
+    {
+        if (neutralBorderCount == 0) return 0f; // nothing left to claim, force other actions to compete
+        return 0.4f + (1f - f.Aggression) * 0.3f;
+    }
 
     static float ScoreConsolidate(Faction f) => (1f - f.Stability) * 0.6f;
 
@@ -52,7 +57,12 @@ public static class FactionBehavior
         if (rel == RelationState.Alliance || rel == RelationState.DefensivePact) return 0f;
 
         float strengthRatio = f.Strength / target.Strength;
-        float score = f.Aggression * 0.6f + Mathf.Abs(strengthRatio - 1f) * 0.3f;
+        float animosity = f.GetAnimosity(target.Id);
+
+        float score = f.Aggression * 0.4f
+                    + Mathf.Abs(strengthRatio - 1f) * 0.2f
+                    + animosity * 0.5f; // animosity now a major driver of war
+
         if (rel == RelationState.War) score += 0.2f;
         return Mathf.Clamp01(score);
     }
@@ -113,5 +123,25 @@ public static class FactionBehavior
         return all.Where(o => neighborIds.Contains(o.Id) && o.IsAlive)
                   .OrderByDescending(o => o.Strength)
                   .FirstOrDefault();
+    }
+
+    static int CountNeutralBorderCells(Faction f, Cell[,] grid, int width, int height)
+    {
+        int count = 0;
+        int[] dx = { 1, -1, 0, 0 };
+        int[] dy = { 0, 0, 1, -1 };
+        var visited = new HashSet<(int, int)>();
+
+        foreach (var (x, y) in f.Territory)
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                int nx = x + dx[i], ny = y + dy[i];
+                if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+                if (grid[nx, ny].IsWater) continue;
+                if (grid[nx, ny].OwnerFactionId == -1 && visited.Add((nx, ny))) count++;
+            }
+        }
+        return count;
     }
 }
