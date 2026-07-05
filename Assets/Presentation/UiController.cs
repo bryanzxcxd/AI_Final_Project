@@ -1,6 +1,5 @@
 using System;
 using System.Collections;
-using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -14,7 +13,6 @@ public class UIController : MonoBehaviour
 
     int mapWidth = 64;
     int mapHeight = 64;
-    int factionCount = 6;
     int numTicks = 200;
     public float secondsPerTick = 0.15f;
 
@@ -40,10 +38,13 @@ public class UIController : MonoBehaviour
 
         var rng = new System.Random(seed);
         var grid = MapGenerator.Generate(mapWidth, mapHeight, rng);
-        currentSim = new WorldSim(grid, mapWidth, mapHeight, rng, factionCount);
+        var chain = ScenarioChain.PickRandom(rng);
+
+        currentSim = new WorldSim(grid, mapWidth, mapHeight, rng, chain.FactionNames.Count, chain);
+        currentSim.SetTotalTicks(numTicks);
 
         loreText.text = $"Seed used: {seed}\n\nSimulating history...";
-        generateButton.interactable = false; // prevent spam-clicking mid-animation
+        generateButton.interactable = false;
 
         DrawMap(currentSim);
 
@@ -59,13 +60,12 @@ public class UIController : MonoBehaviour
             yield return new WaitForSeconds(secondsPerTick);
         }
 
-        // simulation finished, now build and show the full chronicle
-        string chronicle = LoreTemplater.BuildChronicle(currentSim.History, currentSim.Factions);
+        string chronicle = LoreTemplater.BuildChronicle(currentSim.History, currentSim.Factions, numTicks, currentSim.Chain);
         loreText.text = string.IsNullOrEmpty(chronicle)
             ? $"Seed used: {seed}\n\n(no significant events occurred)"
-            : $"Seed used: {seed}\n\n{chronicle}";
+            : chronicle;
 
-        generateButton.interactable = true; // re-enable once done
+        generateButton.interactable = true;
     }
 
     void DrawMap(WorldSim sim)
@@ -75,9 +75,7 @@ public class UIController : MonoBehaviour
             for (int y = 0; y < mapHeight; y++)
             {
                 Cell c = sim.Grid[x, y];
-                Color col = c.OwnerFactionId >= 0
-                    ? sim.Factions[c.OwnerFactionId].Color
-                    : ElevationToColor(c.Elevation);
+                Color col = c.OwnerFactionId >= 0 ? sim.Factions[c.OwnerFactionId].Color : ElevationToColor(c.Elevation);
                 mapTexture.SetPixel(x, y, col);
             }
         }

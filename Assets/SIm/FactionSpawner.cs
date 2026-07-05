@@ -3,11 +3,14 @@ using UnityEngine;
 
 public static class FactionSpawner
 {
-    public static List<Faction> SpawnFactions(Cell[,] grid, int width, int height, System.Random rng, int count)
+    public static List<Faction> SpawnFactions(Cell[,] grid, int width, int height, System.Random rng, int count, ScenarioChain chain)
     {
         var factions = new List<Faction>();
         var usedSpots = new List<(int, int)>();
         int minDistance = Mathf.Max(width, height) / (count + 1);
+
+        var availableNames = new List<string>(chain.FactionNames);
+        count = Mathf.Min(count, availableNames.Count);
 
         int attempts = 0;
         while (factions.Count < count && attempts < count * 200)
@@ -29,12 +32,13 @@ public static class FactionSpawner
             var faction = new Faction
             {
                 Id = factions.Count,
-                Name = NameGenerator.GenerateKingdomName(rng),
+                Name = availableNames[factions.Count],
                 Color = new Color((float)rng.NextDouble(), (float)rng.NextDouble(), (float)rng.NextDouble()),
                 Capital = (x, y),
                 Aggression = (float)rng.NextDouble(),
                 Wealth = 10f,
-                Stability = 1f
+                Stability = 1f,
+                Archetype = Archetype.Get((ArchetypeType)rng.Next(System.Enum.GetValues(typeof(ArchetypeType)).Length))
             };
             faction.Territory.Add((x, y));
             grid[x, y].OwnerFactionId = faction.Id;

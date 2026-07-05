@@ -4,15 +4,8 @@ using UnityEngine;
 
 public enum ActionType
 {
-    Expand,
-    Attack,
-    Trade,
-    DefensiveAlliance,
-    Alliance,
-    PeaceTreaty,
-    BreakPeace,
-    Consolidate,
-    Destroyed
+    Expand, Attack, Trade, DefensiveAlliance, Alliance, PeaceTreaty, BreakPeace,
+    Consolidate, Destroyed, Rebellion, TradeMilestone, GoldenAge, DarkAge, StageTransition
 }
 
 public static class FactionBehavior
@@ -45,7 +38,7 @@ public static class FactionBehavior
 
     static float ScoreExpand(Faction f, int neutralBorderCount)
     {
-        if (neutralBorderCount == 0) return 0f; // nothing left to claim, force other actions to compete
+        if (neutralBorderCount == 0) return 0f;
         return 0.4f + (1f - f.Aggression) * 0.3f;
     }
 
@@ -59,10 +52,7 @@ public static class FactionBehavior
         float strengthRatio = f.Strength / target.Strength;
         float animosity = f.GetAnimosity(target.Id);
 
-        float score = f.Aggression * 0.4f
-                    + Mathf.Abs(strengthRatio - 1f) * 0.2f
-                    + animosity * 0.5f; // animosity now a major driver of war
-
+        float score = (f.Aggression * 0.4f + Mathf.Abs(strengthRatio - 1f) * 0.2f + animosity * 0.5f) * f.Archetype.AggressionMultiplier;
         if (rel == RelationState.War) score += 0.2f;
         return Mathf.Clamp01(score);
     }
@@ -71,21 +61,23 @@ public static class FactionBehavior
     {
         var rel = f.Relations.GetValueOrDefault(target.Id, RelationState.Neutral);
         if (rel == RelationState.War) return 0f;
-        return 0.3f + (1f - f.Aggression) * 0.3f;
+        float diminish = 1f - f.GetEconomicTies(target.Id) * 0.3f;
+        return (0.3f + (1f - f.Aggression) * 0.3f) * f.Archetype.DiplomacyMultiplier * diminish;
     }
 
     static float ScoreAlliance(Faction f, Faction target)
     {
         var rel = f.Relations.GetValueOrDefault(target.Id, RelationState.Neutral);
         if (rel == RelationState.War || rel == RelationState.Alliance) return 0f;
-        return (1f - f.Aggression) * 0.3f + 0.2f;
+        float tieBonus = f.GetEconomicTies(target.Id) * 0.4f;
+        return ((1f - f.Aggression) * 0.3f + 0.2f + tieBonus) * f.Archetype.DiplomacyMultiplier;
     }
 
     static float ScoreDefensiveAlliance(Faction f, Faction target)
     {
         var rel = f.Relations.GetValueOrDefault(target.Id, RelationState.Neutral);
         if (rel == RelationState.War || rel == RelationState.Alliance) return 0f;
-        return 0.25f;
+        return 0.25f * f.Archetype.DiplomacyMultiplier;
     }
 
     static float ScorePeaceTreaty(Faction f, Faction target)
@@ -93,14 +85,14 @@ public static class FactionBehavior
         var rel = f.Relations.GetValueOrDefault(target.Id, RelationState.Neutral);
         if (rel != RelationState.War) return 0f;
         float strengthRatio = f.Strength / target.Strength;
-        return Mathf.Clamp01((1f - strengthRatio) * 0.7f);
+        return Mathf.Clamp01((1f - strengthRatio) * 0.7f * (1f - f.Archetype.WarStubbornness));
     }
 
     static float ScoreBreakPeace(Faction f, Faction target)
     {
         var rel = f.Relations.GetValueOrDefault(target.Id, RelationState.Neutral);
         if (rel != RelationState.Peace) return 0f;
-        return f.Aggression * 0.3f;
+        return f.Aggression * 0.3f + f.Archetype.BetrayalChance;
     }
 
     static Faction GetStrongestNeighbor(Faction f, List<Faction> all, Cell[,] grid, int width, int height)
@@ -120,7 +112,7 @@ public static class FactionBehavior
             }
         }
 
-        return all.Where(o => neighborIds.Contains(o.Id) && o.IsAlive)
+        return all.Where(o => neighborIds.Contains(o.Id) && o.IsAlive && o.Id != f.Id)
                   .OrderByDescending(o => o.Strength)
                   .FirstOrDefault();
     }
