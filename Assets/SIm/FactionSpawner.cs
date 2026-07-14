@@ -9,8 +9,8 @@ public static class FactionSpawner
         var usedSpots = new List<(int, int)>();
         int minDistance = Mathf.Max(width, height) / (count + 1);
 
-        var availableNames = new List<string>(chain.FactionNames);
-        count = Mathf.Min(count, availableNames.Count);
+        var seeds = chain.FactionSeeds;
+        count = Mathf.Min(count, seeds.Count);
 
         int attempts = 0;
         while (factions.Count < count && attempts < count * 200)
@@ -32,13 +32,13 @@ public static class FactionSpawner
             var faction = new Faction
             {
                 Id = factions.Count,
-                Name = availableNames[factions.Count],
+                Name = seeds[factions.Count].Name,
                 Color = new Color((float)rng.NextDouble(), (float)rng.NextDouble(), (float)rng.NextDouble()),
                 Capital = (x, y),
                 Aggression = (float)rng.NextDouble(),
                 Wealth = 10f,
                 Stability = 1f,
-                Archetype = Archetype.Get((ArchetypeType)rng.Next(System.Enum.GetValues(typeof(ArchetypeType)).Length))
+                Archetype = Archetype.Get(seeds[factions.Count].Archetype)
             };
             faction.Territory.Add((x, y));
             grid[x, y].OwnerFactionId = faction.Id;

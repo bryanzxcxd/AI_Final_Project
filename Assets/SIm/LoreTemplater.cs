@@ -74,9 +74,9 @@ public static class LoreTemplater
         {
             int years = int.Parse(evt.Description);
             return Pick(new[] {
-                $"For {years} years, the known realms knew no significant conflict — a golden age of peace and prosperity.",
-                $"A long era of calm settled over the land, lasting {years} years without major war.",
-                $"The world entered a period of relative harmony, undisturbed by war for {years} years."
+                $"For {years} years, the scattered settlements knew no significant conflict - a golden age of peace and recovery.",
+                $"A long era of calm settled over the region, lasting {years} years without major war.",
+                $"The survivors entered a period of relative harmony, undisturbed by war for {years} years."
             }, evt);
         }
 
@@ -96,7 +96,7 @@ public static class LoreTemplater
                 if (target == null) return null;
                 {
                     string fragment = LoreFragments.TryGetFragment(actor.Archetype.Type, ActionType.Attack, evt);
-                    string line = fragment != null ? LoreFragments.Format(fragment, actor, target) : $"War broke out as {actor.Name} struck at the borders of {target.Name}.";
+                    string line = fragment != null ? LoreFragments.Format(fragment, actor, target) : $"War broke out as {actor.Name} struck at the territory of {target.Name}.";
                     return causeClause + line;
                 }
 
@@ -105,14 +105,14 @@ public static class LoreTemplater
                 {
                     string fragment = LoreFragments.TryGetFragment(actor.Archetype.Type, ActionType.Trade, evt);
                     return fragment != null ? LoreFragments.Format(fragment, actor, target)
-                        : $"Merchants of {actor.Name} and {target.Name} opened new trade routes, enriching both realms.";
+                        : $"Traders of {actor.Name} and {target.Name} opened new supply routes, strengthening both communities.";
                 }
 
             case ActionType.TradeMilestone:
                 return target != null
                     ? Pick(new[] {
-                        $"The trade partnership between {actor.Name} and {target.Name} flourished into a deep economic bond.",
-                        $"Merchant guilds of {actor.Name} and {target.Name} grew intertwined, their fortunes now linked."
+                        $"The trade partnership between {actor.Name} and {target.Name} grew into a deep economic bond.",
+                        $"The supply networks of {actor.Name} and {target.Name} grew intertwined, their fortunes now linked."
                     }, evt)
                     : null;
 
@@ -143,8 +143,8 @@ public static class LoreTemplater
                     string fragment = target != null ? LoreFragments.TryGetFragment(actor.Archetype.Type, ActionType.Destroyed, evt) : null;
                     if (fragment != null) return LoreFragments.Format(fragment, actor, target);
                     return target != null
-                        ? $"The realm of {actor.Name} fell at last, conquered utterly by {target.Name}."
-                        : $"The realm of {actor.Name} collapsed and was erased from history.";
+                        ? $"{actor.Name} fell at last, its territory overrun by {target.Name}."
+                        : $"{actor.Name} collapsed and was erased from history.";
                 }
 
             case ActionType.Rebellion:

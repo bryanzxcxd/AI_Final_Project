@@ -40,7 +40,7 @@ public class UIController : MonoBehaviour
         var grid = MapGenerator.Generate(mapWidth, mapHeight, rng);
         var chain = ScenarioChain.PickRandom(rng);
 
-        currentSim = new WorldSim(grid, mapWidth, mapHeight, rng, chain.FactionNames.Count, chain);
+        currentSim = new WorldSim(grid, mapWidth, mapHeight, rng, chain.FactionSeeds.Count, chain);
         currentSim.SetTotalTicks(numTicks);
 
         loreText.text = $"Seed used: {seed}\n\nSimulating history...";
