@@ -5,7 +5,8 @@ using UnityEngine;
 public enum ActionType
 {
     Expand, Attack, Trade, DefensiveAlliance, Alliance, PeaceTreaty, BreakPeace,
-    Consolidate, Destroyed, Rebellion, TradeMilestone, GoldenAge, DarkAge, StageTransition
+    Consolidate, Destroyed, Rebellion, TradeMilestone, GoldenAge, DarkAge, StageTransition,
+    JoinWar
 }
 
 public static class FactionBehavior
@@ -61,7 +62,7 @@ public static class FactionBehavior
         float strengthRatio = f.Strength / target.Strength;
         float animosity = f.GetAnimosity(target.Id);
 
-        float score = (f.Aggression * 0.4f + Mathf.Abs(strengthRatio - 1f) * 0.2f + animosity * 0.5f) * f.Archetype.AggressionMultiplier;
+        float score = (f.Aggression * 0.4f + Mathf.Max(0f, strengthRatio - 1f) * 0.2f + animosity * 0.5f) * f.Archetype.AggressionMultiplier;
         if (rel == RelationState.War) score += 0.2f;
         return Mathf.Clamp01(score);
     }
@@ -85,7 +86,7 @@ public static class FactionBehavior
     static float ScoreDefensiveAlliance(Faction f, Faction target)
     {
         var rel = f.Relations.GetValueOrDefault(target.Id, RelationState.Neutral);
-        if (rel == RelationState.War || rel == RelationState.Alliance) return 0f;
+        if (rel == RelationState.War || rel == RelationState.Alliance || rel == RelationState.DefensivePact) return 0f;
         return 0.25f * f.Archetype.DiplomacyMultiplier;
     }
 

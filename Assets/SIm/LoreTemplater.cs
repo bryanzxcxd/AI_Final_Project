@@ -6,7 +6,7 @@ public static class LoreTemplater
 {
 
     static readonly HashSet<ActionType> ConflictActions = new HashSet<ActionType> {
-        ActionType.Attack, ActionType.BreakPeace, ActionType.Destroyed, ActionType.Rebellion
+        ActionType.Attack, ActionType.BreakPeace, ActionType.Destroyed, ActionType.Rebellion, ActionType.JoinWar
     };
 
     public static string BuildChronicle(List<SimEvent> history, List<Faction> factions, int totalTicks, ScenarioChain chain)
@@ -145,6 +145,17 @@ public static class LoreTemplater
                     return target != null
                         ? $"{actor.Name} fell at last, its territory overrun by {target.Name}."
                         : $"{actor.Name} collapsed and was erased from history.";
+                }
+
+            case ActionType.JoinWar:
+                if (target == null) return null;
+                {
+                    Faction pactPartner = evt.CausedBy?.TargetFactionId != null
+                        ? factions.FirstOrDefault(f => f.Id == evt.CausedBy.TargetFactionId.Value)
+                        : null;
+                    return pactPartner != null
+                        ? $"Honoring its pact with {pactPartner.Name}, {actor.Name} entered the war against {target.Name}."
+                        : $"{actor.Name} honored its obligations and entered the war against {target.Name}.";
                 }
 
             case ActionType.Rebellion:

@@ -92,6 +92,7 @@ public class WorldSim
                         }
                         History.Add(evt);
                         lastSignificantEvent[key] = evt;
+                        PullAlliesIntoWar(faction, target, evt);
                     }
                     alreadyLogged = true;
                     TryConquer(faction, target);
@@ -176,6 +177,28 @@ public class WorldSim
                 lastSignificantEvent[PairKey(faction.Id, target.Id)] = evt;
             }
             History.Add(evt);
+        }
+    }
+
+    void PullAlliesIntoWar(Faction attacker, Faction defender, SimEvent attackEvt)
+    {
+        foreach (var ally in Factions)
+        {
+            if (!ally.IsAlive || ally.Id == attacker.Id || ally.Id == defender.Id) continue;
+
+            var relToDefender = ally.Relations.GetValueOrDefault(defender.Id, RelationState.Neutral);
+            if (relToDefender != RelationState.Alliance && relToDefender != RelationState.DefensivePact) continue;
+
+            var relToAttacker = ally.Relations.GetValueOrDefault(attacker.Id, RelationState.Neutral);
+            if (relToAttacker == RelationState.War || relToAttacker == RelationState.Alliance ||
+                relToAttacker == RelationState.DefensivePact) continue;
+
+            ally.Relations[attacker.Id] = RelationState.War;
+            attacker.Relations[ally.Id] = RelationState.War;
+
+            var joinEvt = new SimEvent { Tick = CurrentTick, Action = ActionType.JoinWar, FactionId = ally.Id, TargetFactionId = attacker.Id, CausedBy = attackEvt };
+            History.Add(joinEvt);
+            lastSignificantEvent[PairKey(ally.Id, attacker.Id)] = joinEvt;
         }
     }
 
