@@ -5,7 +5,7 @@ using UnityEngine;
 public enum ActionType
 {
     Expand, Attack, Trade, DefensiveAlliance, Alliance, PeaceTreaty, BreakPeace,
-    Consolidate, Destroyed, Rebellion, TradeMilestone, GoldenAge, DarkAge, StageTransition,
+    Consolidate, Destroyed, Rebellion, TradeMilestone, GoldenAge, StageTransition,
     JoinWar
 }
 

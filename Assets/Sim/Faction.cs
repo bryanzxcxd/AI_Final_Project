@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum RelationState { Neutral, Peace, War, Alliance, DefensivePact, Vassal }
+public enum RelationState { Neutral, Peace, War, Alliance, DefensivePact }
 
 public class Faction
 {
