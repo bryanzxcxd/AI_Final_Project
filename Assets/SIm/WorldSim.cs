@@ -15,6 +15,7 @@ public class WorldSim
     Dictionary<(int, int), SimEvent> lastSignificantEvent = new Dictionary<(int, int), SimEvent>();
     int lastStageIndex = -1;
     int totalTicksForStages = 1;
+    StageModifiers currentStageModifiers = new StageModifiers();
 
     public WorldSim(Cell[,] grid, int width, int height, System.Random rng, int factionCount, ScenarioChain chain)
     {
@@ -43,7 +44,7 @@ public class WorldSim
 
         foreach (var faction in Factions.Where(f => f.IsAlive))
         {
-            var (action, target) = FactionBehavior.ChooseAction(faction, Factions, Grid, Width, Height, rng);
+            var (action, target) = FactionBehavior.ChooseAction(faction, Factions, Grid, Width, Height, rng, currentStageModifiers);
             if (target != null && target.Id == faction.Id) continue;
             ApplyAction(faction, action, target);
         }
@@ -296,7 +297,9 @@ public class WorldSim
         if (currentStageIndex != lastStageIndex)
         {
             lastStageIndex = currentStageIndex;
-            History.Add(new SimEvent { Tick = CurrentTick, Action = ActionType.StageTransition, FactionId = -1, Description = Chain.Stages[currentStageIndex] });
+            var stage = Chain.Stages[currentStageIndex];
+            currentStageModifiers = StageModifiers.Get(stage.Mood);
+            History.Add(new SimEvent { Tick = CurrentTick, Action = ActionType.StageTransition, FactionId = -1, Description = stage.Name });
         }
     }
 

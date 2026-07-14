@@ -12,24 +12,24 @@ public static class FactionBehavior
 {
 
     public static (ActionType action, Faction target) ChooseAction(
-        Faction faction, List<Faction> allFactions, Cell[,] grid, int width, int height, System.Random rng)
+        Faction faction, List<Faction> allFactions, Cell[,] grid, int width, int height, System.Random rng, StageModifiers stage)
     {
 
         var scores = new Dictionary<ActionType, float>();
         Faction bestNeighbor = GetStrongestNeighbor(faction, allFactions, grid, width, height);
         int neutralBorderCount = CountNeutralBorderCells(faction, grid, width, height);
 
-        scores[ActionType.Expand] = ScoreExpand(faction, neutralBorderCount);
-        scores[ActionType.Consolidate] = ScoreConsolidate(faction);
+        scores[ActionType.Expand] = ScoreExpand(faction, neutralBorderCount) * stage.Expand;
+        scores[ActionType.Consolidate] = ScoreConsolidate(faction) * stage.Consolidate;
 
         if (bestNeighbor != null)
         {
-            scores[ActionType.Attack] = ScoreAttack(faction, bestNeighbor);
-            scores[ActionType.Trade] = ScoreTrade(faction, bestNeighbor);
-            scores[ActionType.Alliance] = ScoreAlliance(faction, bestNeighbor);
-            scores[ActionType.DefensiveAlliance] = ScoreDefensiveAlliance(faction, bestNeighbor);
-            scores[ActionType.PeaceTreaty] = ScorePeaceTreaty(faction, bestNeighbor);
-            scores[ActionType.BreakPeace] = ScoreBreakPeace(faction, bestNeighbor);
+            scores[ActionType.Attack] = ScoreAttack(faction, bestNeighbor) * stage.Attack;
+            scores[ActionType.Trade] = ScoreTrade(faction, bestNeighbor) * stage.Trade;
+            scores[ActionType.Alliance] = ScoreAlliance(faction, bestNeighbor) * stage.Alliance;
+            scores[ActionType.DefensiveAlliance] = ScoreDefensiveAlliance(faction, bestNeighbor) * stage.DefensiveAlliance;
+            scores[ActionType.PeaceTreaty] = ScorePeaceTreaty(faction, bestNeighbor) * stage.PeaceTreaty;
+            scores[ActionType.BreakPeace] = ScoreBreakPeace(faction, bestNeighbor) * stage.BreakPeace;
         }
 
         var best = scores.OrderByDescending(kv => kv.Value).First();
