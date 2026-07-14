@@ -9,8 +9,10 @@ public class UIController : MonoBehaviour
 {
     public TMP_InputField seedInput;
     public Button generateButton;
+    public Button skipButton;
     public RawImage mapDisplay;
     public TMP_Text loreText;
+    public TMP_Text legendText;
 
     int mapWidth = 64;
     int mapHeight = 64;
@@ -23,13 +25,30 @@ public class UIController : MonoBehaviour
     StringBuilder liveChronicle;
     int lastHistoryIndex;
     bool skipRequested;
+    ScrollRect chronicleScroll;
 
     void Start()
     {
         generateButton.onClick.AddListener(OnGenerateClicked);
+        if (skipButton != null)
+        {
+            skipButton.onClick.AddListener(SkipToEnd);
+            skipButton.interactable = false;
+        }
         mapTexture = new Texture2D(mapWidth, mapHeight);
         mapTexture.filterMode = FilterMode.Point;
         mapDisplay.texture = mapTexture;
+        ClearMap();
+        chronicleScroll = loreText.GetComponentInParent<ScrollRect>(true);
+    }
+
+    void ClearMap()
+    {
+        var fill = new Color32(16, 20, 25, 255);
+        var pixels = new Color32[mapWidth * mapHeight];
+        for (int i = 0; i < pixels.Length; i++) pixels[i] = fill;
+        mapTexture.SetPixels32(pixels);
+        mapTexture.Apply();
     }
 
     void OnGenerateClicked()
@@ -57,13 +76,19 @@ public class UIController : MonoBehaviour
         lastHistoryIndex = 0;
         skipRequested = false;
 
+        RefreshLegend();
         DrawMap(currentSim);
 
+        if (skipButton != null) skipButton.interactable = true;
         playbackRoutine = StartCoroutine(PlaybackSimulation(seed));
     }
 
-    // Hook this to a UI button to fast-forward the remaining ticks.
-    public void SkipToEnd() => skipRequested = true;
+    // Fast-forwards the remaining ticks of the current playback.
+    public void SkipToEnd()
+    {
+        skipRequested = true;
+        if (skipButton != null) skipButton.interactable = false;
+    }
 
     IEnumerator PlaybackSimulation(int seed)
     {
@@ -83,8 +108,28 @@ public class UIController : MonoBehaviour
 
         string chronicle = LoreTemplater.BuildChronicle(currentSim.History, currentSim.Factions, numTicks, currentSim.Chain);
         loreText.text = $"Seed used: {seed}\n\n{chronicle}";
+        RefreshLegend();
+        if (chronicleScroll != null)
+        {
+            Canvas.ForceUpdateCanvases();
+            chronicleScroll.verticalNormalizedPosition = 1f;
+        }
 
         playbackRoutine = null;
+        if (skipButton != null) skipButton.interactable = false;
+    }
+
+    void RefreshLegend()
+    {
+        if (legendText == null || currentSim == null) return;
+        var sb = new StringBuilder();
+        foreach (var f in currentSim.Factions)
+        {
+            string hex = ColorUtility.ToHtmlStringRGB(f.Color);
+            string entry = $"<color=#{hex}>{f.Name}</color>  <color=#6B7684>{f.Archetype.DisplayName}</color>";
+            sb.AppendLine(f.IsAlive ? entry : $"<s>{entry}</s>");
+        }
+        legendText.text = sb.ToString();
     }
 
     void AppendNewEvents()
@@ -99,7 +144,16 @@ public class UIController : MonoBehaviour
                 changed = true;
             }
         }
-        if (changed) loreText.text = liveChronicle.ToString();
+        if (changed)
+        {
+            loreText.text = liveChronicle.ToString();
+            RefreshLegend();
+            if (chronicleScroll != null)
+            {
+                Canvas.ForceUpdateCanvases();
+                chronicleScroll.verticalNormalizedPosition = 0f;
+            }
+        }
     }
 
     static int Fnv1aHash(string s)

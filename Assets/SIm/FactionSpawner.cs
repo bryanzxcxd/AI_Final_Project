@@ -33,7 +33,7 @@ public static class FactionSpawner
             {
                 Id = factions.Count,
                 Name = seeds[factions.Count].Name,
-                Color = new Color((float)rng.NextDouble(), (float)rng.NextDouble(), (float)rng.NextDouble()),
+                Color = Color.HSVToRGB((0.02f + factions.Count * 0.618034f) % 1f, 0.65f, 0.95f),
                 Capital = (x, y),
                 Aggression = (float)rng.NextDouble(),
                 Wealth = 10f,
