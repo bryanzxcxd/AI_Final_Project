@@ -297,10 +297,20 @@ public class WorldSim
                 var cell = conqueredCells[rng.Next(conqueredCells.Count)];
                 int originalOwnerId = Grid[cell.x, cell.y].OriginalOwnerFactionId;
 
-                Grid[cell.x, cell.y].OwnerFactionId = -1;
-                Grid[cell.x, cell.y].OriginalOwnerFactionId = -1;
                 faction.Territory.Remove(cell);
                 faction.Stability = Mathf.Clamp01(faction.Stability - 0.15f);
+                Grid[cell.x, cell.y].OriginalOwnerFactionId = -1;
+
+                var originalOwner = Factions.FirstOrDefault(f => f.Id == originalOwnerId);
+                if (originalOwner != null && originalOwner.IsAlive)
+                {
+                    Grid[cell.x, cell.y].OwnerFactionId = originalOwnerId;
+                    originalOwner.Territory.Add(cell);
+                }
+                else
+                {
+                    Grid[cell.x, cell.y].OwnerFactionId = -1;
+                }
 
                 var rebellionEvent = new SimEvent { Tick = CurrentTick, Action = ActionType.Rebellion, FactionId = faction.Id, TargetFactionId = originalOwnerId };
                 var key = PairKey(faction.Id, originalOwnerId);

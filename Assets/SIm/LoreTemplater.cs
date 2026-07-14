@@ -37,6 +37,15 @@ public static class LoreTemplater
         return sb.ToString();
     }
 
+    public static string DescribeLive(SimEvent evt, List<Faction> factions)
+    {
+        string line = DescribeEvent(evt, factions);
+        if (string.IsNullOrEmpty(line)) return null;
+        return evt.Action == ActionType.StageTransition
+            ? $"\n--- {line} ---"
+            : $"Year {evt.Tick}: {line}";
+    }
+
     static List<SimEvent> InsertEraEvents(List<SimEvent> history, int totalTicks)
     {
         const int goldenAgeThreshold = 20;
@@ -159,8 +168,9 @@ public static class LoreTemplater
                 }
 
             case ActionType.Rebellion:
-                string formerOwnerName = target != null ? target.Name : "a fallen people";
-                return causeClause + $"the descendants of {formerOwnerName} rose up against {actor.Name}, reclaiming their ancestral land.";
+                if (target != null && target.IsAlive)
+                    return causeClause + $"loyalists of {target.Name} rose up against {actor.Name}, returning their homeland to {target.Name}.";
+                return causeClause + $"the descendants of {(target != null ? target.Name : "a fallen people")} rose up against {actor.Name}, reclaiming their ancestral land.";
 
             default:
                 return null;

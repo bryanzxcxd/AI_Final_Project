@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -19,6 +20,9 @@ public class UIController : MonoBehaviour
     WorldSim currentSim;
     Texture2D mapTexture;
     Coroutine playbackRoutine;
+    StringBuilder liveChronicle;
+    int lastHistoryIndex;
+    bool skipRequested;
 
     void Start()
     {
@@ -34,7 +38,7 @@ public class UIController : MonoBehaviour
 
         int seed = string.IsNullOrEmpty(seedInput.text)
             ? Guid.NewGuid().GetHashCode()
-            : seedInput.text.GetHashCode();
+            : Fnv1aHash(seedInput.text);
 
         var rng = new System.Random(seed);
         var grid = MapGenerator.Generate(mapWidth, mapHeight, rng);
@@ -43,29 +47,73 @@ public class UIController : MonoBehaviour
         currentSim = new WorldSim(grid, mapWidth, mapHeight, rng, chain.FactionSeeds.Count, chain);
         currentSim.SetTotalTicks(numTicks);
 
-        loreText.text = $"Seed used: {seed}\n\nSimulating history...";
-        generateButton.interactable = false;
+        liveChronicle = new StringBuilder();
+        liveChronicle.AppendLine($"Seed used: {seed}");
+        liveChronicle.AppendLine();
+        liveChronicle.AppendLine($"=== {chain.Theme} ===");
+        liveChronicle.AppendLine(chain.WorldSummary);
+        loreText.text = liveChronicle.ToString();
+
+        lastHistoryIndex = 0;
+        skipRequested = false;
 
         DrawMap(currentSim);
 
         playbackRoutine = StartCoroutine(PlaybackSimulation(seed));
     }
 
+    // Hook this to a UI button to fast-forward the remaining ticks.
+    public void SkipToEnd() => skipRequested = true;
+
     IEnumerator PlaybackSimulation(int seed)
     {
         for (int i = 0; i < numTicks; i++)
         {
             currentSim.Tick();
-            DrawMap(currentSim);
-            yield return new WaitForSeconds(secondsPerTick);
+
+            if (!skipRequested)
+            {
+                AppendNewEvents();
+                DrawMap(currentSim);
+                yield return new WaitForSeconds(secondsPerTick);
+            }
         }
 
-        string chronicle = LoreTemplater.BuildChronicle(currentSim.History, currentSim.Factions, numTicks, currentSim.Chain);
-        loreText.text = string.IsNullOrEmpty(chronicle)
-            ? $"Seed used: {seed}\n\n(no significant events occurred)"
-            : chronicle;
+        DrawMap(currentSim);
 
-        generateButton.interactable = true;
+        string chronicle = LoreTemplater.BuildChronicle(currentSim.History, currentSim.Factions, numTicks, currentSim.Chain);
+        loreText.text = $"Seed used: {seed}\n\n{chronicle}";
+
+        playbackRoutine = null;
+    }
+
+    void AppendNewEvents()
+    {
+        bool changed = false;
+        for (; lastHistoryIndex < currentSim.History.Count; lastHistoryIndex++)
+        {
+            string line = LoreTemplater.DescribeLive(currentSim.History[lastHistoryIndex], currentSim.Factions);
+            if (line != null)
+            {
+                liveChronicle.AppendLine(line);
+                changed = true;
+            }
+        }
+        if (changed) loreText.text = liveChronicle.ToString();
+    }
+
+    static int Fnv1aHash(string s)
+    {
+        unchecked
+        {
+            uint hash = 2166136261;
+            foreach (char c in s)
+            {
+                hash ^= c;
+                hash *= 16777619;
+            }
+            return (int)hash;
+        }
     }
 
     void DrawMap(WorldSim sim)
