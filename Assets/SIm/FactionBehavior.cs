@@ -14,26 +14,35 @@ public static class FactionBehavior
     public static (ActionType action, Faction target) ChooseAction(
         Faction faction, List<Faction> allFactions, Cell[,] grid, int width, int height, System.Random rng, StageModifiers stage)
     {
+        float bestScore = float.MinValue;
+        ActionType bestAction = ActionType.Consolidate;
+        Faction bestTarget = null;
 
-        var scores = new Dictionary<ActionType, float>();
-        Faction bestNeighbor = GetStrongestNeighbor(faction, allFactions, grid, width, height);
-        int neutralBorderCount = CountNeutralBorderCells(faction, grid, width, height);
-
-        scores[ActionType.Expand] = ScoreExpand(faction, neutralBorderCount) * stage.Expand;
-        scores[ActionType.Consolidate] = ScoreConsolidate(faction) * stage.Consolidate;
-
-        if (bestNeighbor != null)
+        void Consider(ActionType action, float score, Faction target)
         {
-            scores[ActionType.Attack] = ScoreAttack(faction, bestNeighbor) * stage.Attack;
-            scores[ActionType.Trade] = ScoreTrade(faction, bestNeighbor) * stage.Trade;
-            scores[ActionType.Alliance] = ScoreAlliance(faction, bestNeighbor) * stage.Alliance;
-            scores[ActionType.DefensiveAlliance] = ScoreDefensiveAlliance(faction, bestNeighbor) * stage.DefensiveAlliance;
-            scores[ActionType.PeaceTreaty] = ScorePeaceTreaty(faction, bestNeighbor) * stage.PeaceTreaty;
-            scores[ActionType.BreakPeace] = ScoreBreakPeace(faction, bestNeighbor) * stage.BreakPeace;
+            if (score > bestScore)
+            {
+                bestScore = score;
+                bestAction = action;
+                bestTarget = target;
+            }
         }
 
-        var best = scores.OrderByDescending(kv => kv.Value).First();
-        return (best.Key, bestNeighbor);
+        int neutralBorderCount = CountNeutralBorderCells(faction, grid, width, height);
+        Consider(ActionType.Expand, ScoreExpand(faction, neutralBorderCount) * stage.Expand, null);
+        Consider(ActionType.Consolidate, ScoreConsolidate(faction) * stage.Consolidate, null);
+
+        foreach (var neighbor in GetNeighborFactions(faction, allFactions, grid, width, height))
+        {
+            Consider(ActionType.Attack, ScoreAttack(faction, neighbor) * stage.Attack, neighbor);
+            Consider(ActionType.Trade, ScoreTrade(faction, neighbor) * stage.Trade, neighbor);
+            Consider(ActionType.Alliance, ScoreAlliance(faction, neighbor) * stage.Alliance, neighbor);
+            Consider(ActionType.DefensiveAlliance, ScoreDefensiveAlliance(faction, neighbor) * stage.DefensiveAlliance, neighbor);
+            Consider(ActionType.PeaceTreaty, ScorePeaceTreaty(faction, neighbor) * stage.PeaceTreaty, neighbor);
+            Consider(ActionType.BreakPeace, ScoreBreakPeace(faction, neighbor) * stage.BreakPeace, neighbor);
+        }
+
+        return (bestAction, bestTarget);
     }
 
     static float ScoreExpand(Faction f, int neutralBorderCount)
@@ -95,7 +104,7 @@ public static class FactionBehavior
         return f.Aggression * 0.3f + f.Archetype.BetrayalChance;
     }
 
-    static Faction GetStrongestNeighbor(Faction f, List<Faction> all, Cell[,] grid, int width, int height)
+    static List<Faction> GetNeighborFactions(Faction f, List<Faction> all, Cell[,] grid, int width, int height)
     {
         var neighborIds = new HashSet<int>();
         int[] dx = { 1, -1, 0, 0 };
@@ -112,9 +121,7 @@ public static class FactionBehavior
             }
         }
 
-        return all.Where(o => neighborIds.Contains(o.Id) && o.IsAlive && o.Id != f.Id)
-                  .OrderByDescending(o => o.Strength)
-                  .FirstOrDefault();
+        return all.Where(o => neighborIds.Contains(o.Id) && o.IsAlive && o.Id != f.Id).ToList();
     }
 
     static int CountNeutralBorderCells(Faction f, Cell[,] grid, int width, int height)
