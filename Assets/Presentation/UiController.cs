@@ -18,6 +18,8 @@ public class UIController : MonoBehaviour
     int mapHeight = 64;
     int numTicks = 200;
     public float secondsPerTick = 0.15f;
+    public bool exportChronicle = true;
+    public bool logDecisions = false;
 
     WorldSim currentSim;
     Texture2D mapTexture;
@@ -75,6 +77,7 @@ public class UIController : MonoBehaviour
 
         lastHistoryIndex = 0;
         skipRequested = false;
+        FactionBehavior.TraceLog = logDecisions ? new StringBuilder() : null;
 
         RefreshLegend();
         DrawMap(currentSim);
@@ -117,6 +120,32 @@ public class UIController : MonoBehaviour
 
         playbackRoutine = null;
         if (skipButton != null) skipButton.interactable = false;
+
+        WriteOutputFiles(seed, chronicle);
+    }
+
+    void WriteOutputFiles(int seed, string chronicle)
+    {
+        if (!exportChronicle && FactionBehavior.TraceLog == null) return;
+        try
+        {
+            string dir = System.IO.Path.Combine(Application.dataPath, "..", "Output");
+            System.IO.Directory.CreateDirectory(dir);
+            if (exportChronicle)
+            {
+                System.IO.File.WriteAllText(System.IO.Path.Combine(dir, "latest_chronicle.txt"),
+                    $"Seed: {seed}\n\n{chronicle}");
+            }
+            if (FactionBehavior.TraceLog != null)
+            {
+                System.IO.File.WriteAllText(System.IO.Path.Combine(dir, "latest_decisions.txt"),
+                    $"Seed: {seed}\n\n{FactionBehavior.TraceLog}");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"Could not write output files: {e.Message}");
+        }
     }
 
     void RefreshLegend()

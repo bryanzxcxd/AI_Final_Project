@@ -17,7 +17,7 @@ MonoBehaviour:
   m_Subtarget: 2
   m_PlatformId: cb423bfea44b4d658edb8bc5d91a3024
   m_PlatformBuildProfile:
-    rid: 8043699754110025728
+    rid: 8043699755698356224
   m_ActivePlatformGuid: 
   m_AdditionalPlatformBuildSettings: []
   m_OverrideGlobalSceneList: 1
@@ -33,7 +33,7 @@ MonoBehaviour:
   references:
     version: 2
     RefIds:
-    - rid: 8043699754110025728
+    - rid: 8043699755698356224
       type: {class: LinuxPlatformSettings, ns: UnityEditor.LinuxStandalone, asm: UnityEditor.LinuxStandalone.Extensions}
       data:
         m_Development: 0

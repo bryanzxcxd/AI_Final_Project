@@ -39,6 +39,7 @@ public class WorldSim
     {
         CurrentTick++;
         CheckStageTransition();
+        FactionBehavior.TraceLog?.AppendLine($"--- Tick {CurrentTick} ({Chain.Stages[lastStageIndex].Name}) ---");
         UpdateAnimosity();
         CheckRebellions();
 

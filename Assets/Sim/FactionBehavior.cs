@@ -11,6 +11,9 @@ public enum ActionType
 
 public static class FactionBehavior
 {
+    // When non-null, ChooseAction appends a per-faction score breakdown
+    // each tick. Enabled by UIController's logDecisions toggle.
+    public static System.Text.StringBuilder TraceLog;
 
     public static (ActionType action, Faction target) ChooseAction(
         Faction faction, List<Faction> allFactions, Cell[,] grid, int width, int height, System.Random rng, StageModifiers stage)
@@ -18,9 +21,11 @@ public static class FactionBehavior
         float bestScore = float.MinValue;
         ActionType bestAction = ActionType.Consolidate;
         Faction bestTarget = null;
+        var candidates = TraceLog != null ? new List<(ActionType action, Faction target, float score)>() : null;
 
         void Consider(ActionType action, float score, Faction target)
         {
+            candidates?.Add((action, target, score));
             if (score > bestScore)
             {
                 bestScore = score;
@@ -41,6 +46,15 @@ public static class FactionBehavior
             Consider(ActionType.DefensiveAlliance, ScoreDefensiveAlliance(faction, neighbor) * stage.DefensiveAlliance, neighbor);
             Consider(ActionType.PeaceTreaty, ScorePeaceTreaty(faction, neighbor) * stage.PeaceTreaty, neighbor);
             Consider(ActionType.BreakPeace, ScoreBreakPeace(faction, neighbor) * stage.BreakPeace, neighbor);
+        }
+
+        if (candidates != null)
+        {
+            var parts = candidates
+                .OrderByDescending(c => c.score)
+                .Take(5)
+                .Select(c => $"{c.action}{(c.target != null ? ">" + c.target.Name : "")}={c.score:0.00}");
+            TraceLog.AppendLine($"  {faction.Name}: {string.Join(" | ", parts)}");
         }
 
         return (bestAction, bestTarget);
