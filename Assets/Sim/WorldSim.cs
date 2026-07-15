@@ -45,13 +45,21 @@ public class WorldSim
 
         foreach (var faction in Factions.Where(f => f.IsAlive))
         {
-            var (action, target) = FactionBehavior.ChooseAction(faction, Factions, Grid, Width, Height, rng, currentStageModifiers);
+            var (action, target) = FactionBehavior.ChooseAction(faction, Factions, Grid, Width, Height, rng, currentStageModifiers, CurrentTick);
             if (target != null && target.Id == faction.Id) continue;
             ApplyAction(faction, action, target);
         }
     }
 
     (int, int) PairKey(int a, int b) => a < b ? (a, b) : (b, a);
+
+    void SetRelation(Faction a, Faction b, RelationState state)
+    {
+        a.Relations[b.Id] = state;
+        b.Relations[a.Id] = state;
+        a.RelationSince[b.Id] = CurrentTick;
+        b.RelationSince[a.Id] = CurrentTick;
+    }
 
     bool IsSignificant(ActionType action)
     {
@@ -80,8 +88,7 @@ public class WorldSim
                 {
                     var priorRelation = faction.Relations.GetValueOrDefault(target.Id, RelationState.Neutral);
                     bool isNewWar = priorRelation != RelationState.War;
-                    faction.Relations[target.Id] = RelationState.War;
-                    target.Relations[faction.Id] = RelationState.War;
+                    if (isNewWar) SetRelation(faction, target, RelationState.War);
 
                     if (isNewWar)
                     {
@@ -133,8 +140,7 @@ public class WorldSim
             case ActionType.Alliance:
                 {
                     var key = PairKey(faction.Id, target.Id);
-                    faction.Relations[target.Id] = RelationState.Alliance;
-                    target.Relations[faction.Id] = RelationState.Alliance;
+                    SetRelation(faction, target, RelationState.Alliance);
                     faction.Animosity[target.Id] = 0f;
                     target.Animosity[faction.Id] = 0f;
 
@@ -147,13 +153,11 @@ public class WorldSim
                 }
 
             case ActionType.DefensiveAlliance:
-                faction.Relations[target.Id] = RelationState.DefensivePact;
-                target.Relations[faction.Id] = RelationState.DefensivePact;
+                SetRelation(faction, target, RelationState.DefensivePact);
                 break;
 
             case ActionType.PeaceTreaty:
-                faction.Relations[target.Id] = RelationState.Peace;
-                target.Relations[faction.Id] = RelationState.Peace;
+                SetRelation(faction, target, RelationState.Peace);
                 faction.Animosity[target.Id] = 0f;
                 target.Animosity[faction.Id] = 0f;
                 break;
@@ -161,8 +165,7 @@ public class WorldSim
             case ActionType.BreakPeace:
                 {
                     var key = PairKey(faction.Id, target.Id);
-                    faction.Relations[target.Id] = RelationState.War;
-                    target.Relations[faction.Id] = RelationState.War;
+                    SetRelation(faction, target, RelationState.War);
                     if (lastSignificantEvent.TryGetValue(key, out var oldPeace) && oldPeace.Action == ActionType.PeaceTreaty)
                     {
                         evt.CausedBy = oldPeace;
@@ -194,8 +197,7 @@ public class WorldSim
             if (relToAttacker == RelationState.War || relToAttacker == RelationState.Alliance ||
                 relToAttacker == RelationState.DefensivePact) continue;
 
-            ally.Relations[attacker.Id] = RelationState.War;
-            attacker.Relations[ally.Id] = RelationState.War;
+            SetRelation(ally, attacker, RelationState.War);
 
             var joinEvt = new SimEvent { Tick = CurrentTick, Action = ActionType.JoinWar, FactionId = ally.Id, TargetFactionId = attacker.Id, CausedBy = attackEvt };
             History.Add(joinEvt);

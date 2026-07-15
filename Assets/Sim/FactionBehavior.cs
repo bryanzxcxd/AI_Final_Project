@@ -15,8 +15,14 @@ public static class FactionBehavior
     // each tick. Enabled by UIController's logDecisions toggle.
     public static System.Text.StringBuilder TraceLog;
 
+    // Wars must last this long before a faction will sue for peace, and a
+    // fresh peace holds this long before anyone will break it. Prevents
+    // peace/attack ping-pong loops between a strong and a weak neighbor.
+    const int MinWarTicks = 8;
+    const int MinPeaceTicks = 20;
+
     public static (ActionType action, Faction target) ChooseAction(
-        Faction faction, List<Faction> allFactions, Cell[,] grid, int width, int height, System.Random rng, StageModifiers stage)
+        Faction faction, List<Faction> allFactions, Cell[,] grid, int width, int height, System.Random rng, StageModifiers stage, int currentTick)
     {
         float bestScore = float.MinValue;
         ActionType bestAction = ActionType.Consolidate;
@@ -44,8 +50,8 @@ public static class FactionBehavior
             Consider(ActionType.Trade, ScoreTrade(faction, neighbor) * stage.Trade, neighbor);
             Consider(ActionType.Alliance, ScoreAlliance(faction, neighbor) * stage.Alliance, neighbor);
             Consider(ActionType.DefensiveAlliance, ScoreDefensiveAlliance(faction, neighbor) * stage.DefensiveAlliance, neighbor);
-            Consider(ActionType.PeaceTreaty, ScorePeaceTreaty(faction, neighbor) * stage.PeaceTreaty, neighbor);
-            Consider(ActionType.BreakPeace, ScoreBreakPeace(faction, neighbor) * stage.BreakPeace, neighbor);
+            Consider(ActionType.PeaceTreaty, ScorePeaceTreaty(faction, neighbor, currentTick) * stage.PeaceTreaty, neighbor);
+            Consider(ActionType.BreakPeace, ScoreBreakPeace(faction, neighbor, currentTick) * stage.BreakPeace, neighbor);
         }
 
         if (candidates != null)
@@ -72,6 +78,7 @@ public static class FactionBehavior
     {
         var rel = f.Relations.GetValueOrDefault(target.Id, RelationState.Neutral);
         if (rel == RelationState.Alliance || rel == RelationState.DefensivePact) return 0f;
+        if (rel == RelationState.Peace) return 0f; // must formally break the peace first
 
         float strengthRatio = f.Strength / target.Strength;
         float animosity = f.GetAnimosity(target.Id);
@@ -104,18 +111,20 @@ public static class FactionBehavior
         return 0.25f * f.Archetype.DiplomacyMultiplier;
     }
 
-    static float ScorePeaceTreaty(Faction f, Faction target)
+    static float ScorePeaceTreaty(Faction f, Faction target, int currentTick)
     {
         var rel = f.Relations.GetValueOrDefault(target.Id, RelationState.Neutral);
         if (rel != RelationState.War) return 0f;
+        if (currentTick - f.GetRelationSince(target.Id) < MinWarTicks) return 0f;
         float strengthRatio = f.Strength / target.Strength;
         return Mathf.Clamp01((1f - strengthRatio) * 0.7f * (1f - f.Archetype.WarStubbornness));
     }
 
-    static float ScoreBreakPeace(Faction f, Faction target)
+    static float ScoreBreakPeace(Faction f, Faction target, int currentTick)
     {
         var rel = f.Relations.GetValueOrDefault(target.Id, RelationState.Neutral);
         if (rel != RelationState.Peace) return 0f;
+        if (currentTick - f.GetRelationSince(target.Id) < MinPeaceTicks) return 0f;
         return f.Aggression * 0.3f + f.Archetype.BetrayalChance;
     }
 

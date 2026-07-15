@@ -19,6 +19,7 @@ public class Faction
     public Archetype Archetype;
 
     public Dictionary<int, RelationState> Relations = new Dictionary<int, RelationState>();
+    public Dictionary<int, int> RelationSince = new Dictionary<int, int>();
     public Dictionary<int, float> Animosity = new Dictionary<int, float>();
     public Dictionary<int, float> EconomicTies = new Dictionary<int, float>();
 
@@ -26,4 +27,5 @@ public class Faction
 
     public float GetAnimosity(int otherId) => Animosity.GetValueOrDefault(otherId, 0f);
     public float GetEconomicTies(int otherId) => EconomicTies.GetValueOrDefault(otherId, 0f);
+    public int GetRelationSince(int otherId) => RelationSince.GetValueOrDefault(otherId, int.MinValue);
 }
